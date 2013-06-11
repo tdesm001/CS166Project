@@ -466,26 +466,108 @@ public class EmbeddedSQL {
 		try{
 			boolean isSeries = false;
 			System.out.println("Please enter the following information to register a new movie/series");
+			
+			System.out.println("What is the title of this video?");
+			inputTitle = in.readLine();
+			
 			System.out.println("Is this video part of a series (y/n)?");
-			String input = in.readLine();
-			if( input.equals("y") ) isSeries = true;
+			String inputSeries = in.readLine();
+			String inputTitle = "";
+			String inputYear = "";
+			int inputOnlinePrice;
+			int inputDvdPrice;
+			int inputRating;
+			String inputSeasonNum = "";
+			String inputEpNum = "";
+			int series_id;
+			int season_id;
+			if( inputSeries.equals("y") ){
+				isSeries = true;
+				
+				System.out.println("What season number is this?");
+				inputSeasonNum = in.readLine();
+				
+				System.out.println("What episode is this?");
+				inputEpNum = in.readLine();
+			}
 
+			System.out.println("What year did this come out?");
+			inputYear = in.readLine();
+
+			System.out.println("How much should the online price be?");
+			inputOnlinePrice = Integer.parseInt(in.readLine());
+
+			System.out.println("How much should the dvd price be?");
+			inputDvdPrice = Integer.parseInt(in.readLine());
+
+			System.out.println("How would you rate this (0-10)?");
+			inputRating = Integer.parseInt(in.readLine());
+
+			//this will get the video id
 			String query = "SELECT MAX(video_id) FROM video;";
 			Statement stmt = esql._connection.createStatement ();
-
-      		// issues the query instruction
-      		ResultSet rs = stmt.executeQuery (query);
-		/*
-       	** obtains the metadata object for the returned result set.  The metadata
-       	** contains row and column info.
-       	*/
+			ResultSet rs = stmt.executeQuery (query);
       		ResultSetMetaData rsmd = rs.getMetaData ();
       		int numCol = rsmd.getColumnCount ();
      		rs.next();
-	 		int resultset = Integer.parseInt(rs.getString(numCol)) + 1;
+	 		int video_id = Integer.parseInt(rs.getString(numCol)) + 1;
+			System.out.println(video_id);
+			stmt.close();
 	 		
-			query = "INSERT INTO video( video_id, title, year, online_price, dvd_price";
+			//this will check if the series is already in record if not then it adds it
+			if( isSeries ){
+				stmt = esql._connection.createStatement();
+				String getSeriesId = "SELECT series_id FROM series WHERE title='" + inputTitle + "'";
+				rs = stmt.executeQuery (getSeriesId);
+      			rsmd = rs.getMetaData ();
+      			numCol = rsmd.getColumnCount ();
+     			
+				//get the series id
+				if(rs.next()) series_id = Integer.parseInt(rs.getString(numCol));
+				else{
+					getSeriesId = "SELECT MAX(series_id) FROM series;";
+					rs = stmt.executeQuery(getSeriesId);
+					rsmd = rs.getMetaData();
+					if(rs.next()) series_id = Integer.parseInt(rs.getString(1)) + 1;
+					else series_id = 1;
 
+					//add series information to database
+					String insertSeries = "INSERT INTO series (series_id, title) VALUES (" + series_id + ", '" + inputTitle + "');";
+					esql.executeUpdate(insertSeries);
+				}
+
+				String getSeasonId = "SELECT season_id FROM season WHERE series_id='" + series_id + "' AND season_number='" + inputSeasonNum + "';";
+				rs = stmt.executeQuery(getSeasonId);
+				rsmd = rs.getMetaData();
+				numCol = rsmd.getColumnCount();
+
+				//if the season id already exists grab the season id
+				if(rs.next()) season_id = Integer.parseInt(rs.getString(1));
+				else{
+					getSeasonId = "SELECT MAX(season_id) FROM season;";
+					rs = stmt.executeQuery(getSeasonId);
+					rsmd = rs.getMetaData();
+					if(rs.next()) season_id = Integer.parseInt(rs.getString(1)) + 1;
+					else season_id = 1;
+
+					String insertSeason = "INSERT INTO season (season_id, series_id, season_number ) VALUES (" + season_id + ", " + series_id + ", '" + inputSeasonNum + "');";
+					esql.executeUpdate(insertSeason);
+				}
+
+
+				//System.out.println("season_id " + season_id + " series_id " + series_id);
+
+				String insertVideo = "INSERT INTO video (video_id, title, year, online_price, dvd_price, rating, episode, season_id) VALUES " + 
+						"(" + video_id + ",'" + inputTitle + "', '" + inputYear + "', " + inputOnlinePrice + ", " + inputDvdPrice + ", " + inputRating + ", " + inputEpNum + ", " + season_id + ");";
+
+				esql.executeUpdate(insertVideo);
+				//if season doesnt exist already
+				//if( season_id == null );
+
+				System.out.println("SEASON_ID " + series_id);
+
+				//query = "INSERT INTO video( video_id, title, year, online_price, dvd_price, ";
+			}
 
 		}catch(Exception e){
 			System.err.println( e.getMessage() );
