@@ -92,9 +92,58 @@ public class EmbeddedSQL {
 
       // close the instruction
       stmt.close ();
-   }//end executeUpdate
+   }//end execute update 
+   
+   int getVidId(String query)
+   	{
+		try{
+			// creates a statement objectv
+			Statement stmt = this._connection.createStatement ();						
+													
+			// issues the query instruction
+			ResultSet rs = stmt.executeQuery(query);
+													
+			while(rs.next())
+			{
+				int vid_id = Integer.parseInt(rs.getString(1));
+				return vid_id;
+			}
+			return -1;
+		}catch(Exception e){
+			System.err.println (e.getMessage ());}					
+		return -1;
+	}//end getVidID
+
+   public int executeOrder (String query, int price) throws SQLException
+   {
+		// creates a statement objectv
+		Statement stmt = this._connection.createStatement ();
+
+		// issues the query instruction
+		ResultSet rs = stmt.executeQuery(query);
+
+		while(rs.next())
+		{
+			int balance = Integer.parseInt(rs.getString(1));
+			if(balance - price >= 0)
+			{
+				System.out.println("You would have negative balance if movie is ordered you cannot order movie");		
+				return -1;
+			}
+			else
+			{
+				String updatebal = "UPDATE users SET balance = balance - " + price + " WHERE user_id = '" + currentUser + "'";
+				stmt.executeUpdate(updatebal); //I changed this part might be problematic
+				String newbalance = "SELECT balance FROM users WHERE user_id='" + currentUser + "'";
+				System.out.print("New Balance if ordered: ");
+				executeStringQuery(newbalance, 1);
+				return 1;
+			}	
+		}
+		return -1;
+	}
    	
-	public String executeStringQuery (String query) throws SQLException
+	public void executeStringQuery (String query, int line) throws SQLException
 	{
 		// creates a statement objectv
 		Statement stmt = this._connection.createStatement ();
@@ -109,53 +158,39 @@ public class EmbeddedSQL {
 		System.out.println("--------------");
 		while(rs.next())
 		{
-			System.out.println(rs.getString(1));
+			System.out.println(rs.getString(line));
 		}
-
-		ResultSetMetaData rsmd = rs.getMetaData ();
-		int numCol = rsmd.getColumnCount ();
-		rs.next();
-		String resultset = rs.getString(numCol);
-		System.out.println(resultset);
-
-		stmt.close();
-		return resultset;
 	}
 	
-	public void executeOrderQuery (String query) throws SQLException
+	public int executeCheckTitle (String query) throws SQLException
 	{
-		// creates a statement objectv
-		Statement stmt = this._connection.createStatement ();
+		try{
+				// creates a statement objectv
+				Statement stmt = this._connection.createStatement ();
+				System.out.println("Connection Success");
 
-		// issues the query instruction
-		ResultSet rs = stmt.executeQuery(query);
+				// issues the query instruction
+				ResultSet rs = stmt.executeQuery(query);
+				System.out.println("Query exectued success");
+																										
+				System.out.println("--------------");
+																									
+				while(rs.next())
+				{
+					System.out.print("Are you sure you would like to order (yes or no): ");
+					System.out.println(rs.getString(2) + " Price: " + rs.getString(3));
+					String input = in.readLine();
+					System.out.println();
+				}
 
-		/*
-		** obtains the metadata object for the returned result set.  The metadata
-		** contains row and column info.
-		*/
-		
-		System.out.println("--------------");
-		
-		while(rs.next())
-		{
-			System.out.println("You are about to order:");
-			System.out.println(rs.getString(1));
-		}
-/*
-		ResultSetMetaData rsmd = rs.getMetaData ();
-		int numCol = rsmd.getColumnCount ();
-		rs.next();
-		String resultset = rs.getString(numCol);
-		System.out.println(resultset);
-
-		stmt.close();
-		return resultset;
-*/
+				return Integer.parseInt(rs.getString(3));
+			}catch(Exception e){
+				System.err.println (e.getMessage ());}
+		return -1;
 	}
 
-
-   public int executeLoginQuery (String query) throws SQLException{
+	public int executeLoginQuery (String query) throws SQLException
+	{
    		// creates a statement objectv
       Statement stmt = this._connection.createStatement ();
 
@@ -301,18 +336,23 @@ public class EmbeddedSQL {
 		boolean homescreen = true;         
 		while(homescreen)
 		{
+			System.out.println("---------");
 			System.out.println("Welcome to MovieNet");
             System.out.println("---------");
-            System.out.println("0. See list of movies WORKING");
-            System.out.println("1. Order a movie NOT WORKING");
+            System.out.println("0. See list of movies");
+            System.out.println("1. Order a movie");
 			System.out.println("2. Rate a movie NOT WORKING");
             System.out.println("3. Look at wall NOT WORKING");
+			System.out.println("4. Add to balance");
+			System.out.println("5. List favorite movie");
+			System.out.println("6. Add a favorite movie");
 
+			//these will only be visible if you are super user
 			if( superUser ){
 				System.out.println("\nSuper User Options:");
-				System.out.println("5. Register a new movie");
-				System.out.println("6. Delete an existing movie");
-				System.out.println("7. Delete an existing user");
+				System.out.println("10. Register a new movie WORKING");
+				System.out.println("11. Delete an existing movie NOT WORKING");
+				System.out.println("12. Delete an existing user NOT WORKING");
 			}
 
 			/////////////////////////////////////////////////////////////CHANGES//////////
@@ -323,15 +363,19 @@ public class EmbeddedSQL {
 			switch (readChoice()){
 				case 0: ListMovies(esql); break;
 				case 1: OrderMovie(esql); break;
-						
+				case 2: break;
+				case 3: break;
+				case 4: IncreaseBalance(esql); break;
+				case 5: ListFavs(esql); break;
+				case 6: InsertFav(esql); break;
 				/////////////////////////////////////////////////////////////CHANGES//////////
-				case 5: if( superUser ) {RegisterMovie(esql);}; break;
-				case 6: break;
-				case 7: break;
 				case 8: if( !superUser ) {LoginAsSuper(esql);}; break;
 				/////////////////////////////////////////////////////////////CHANGES//////////
 				
 				case 9: return;
+				case 10: if( superUser ) {RegisterMovie(esql);}; break;
+				case 11: break;
+				case 12: break;
 				default : System.out.println("Unrecognized choice!"); break;
 			}
 
@@ -360,49 +404,98 @@ public class EmbeddedSQL {
 	public static void ListMovies(EmbeddedSQL esql)
 	{
 		try{
-
 			String query = "SELECT title FROM Video";
-			String output = esql.executeStringQuery(query);
+			String output = esql.executeStringQuery(query, 1);
 
-		}
-		
-		catch(Exception e){
+		}catch(Exception e){
          System.err.println (e.getMessage ());
       }
 	}
-	
+
+	public static void ListFavs(EmbeddedSQL esql)
+	{
+		try{
+				String query = "SELECT title FROM video, likes WHERE likes.user_id = '" + currentUser + 
+							"' AND likes.video_id = video.video_id";
+				esql.executeStringQuery(query, 1);
+			}catch(Exception e){
+				System.err.println (e.getMessage ());}
+	}
+
+	public static void InsertFav(EmbeddedSQL esql)
+	{
+		try{
+			System.out.print("Enter title of move you would like to add as favorite: ");
+			String title = in.readLine();
+			String query = "SELECT video_id FROM video WHERE title = '" + title + "'";
+				
+			int vid_id = esql.getVidId(query);
+				
+			System.out.println("GOT THE VID ID");
+			query = "INSERT INTO likes (user_id, video_id) VALUES ('" + currentUser + "', " + vid_id + ")";
+			esql.executeUpdate(query);
+				
+			System.out.println("New favorite added");
+			
+		}catch(Exception e){
+				System.err.println (e.getMessage ());}		
+	}
+
 	public static void OrderMovie(EmbeddedSQL esql)
+	{
+		try{		
+			System.out.print("Title of movie you would like to order: ");
+			String title = in.readline();
+
+			//Grabbing title and will print it
+			String query = "SELECT * FROM video WHERE title = ";
+			query += title + "'";
+
+			int price = esql.executeCheckTitle(query);
+
+			query = "SELECT balance FROM users WHERE user_id ='" + currentUser + "';";
+			int temp = esql.executeOrder(query, price);
+
+			if( temp == 1 )
+				System.out.println("Successfully ordered: " + title);
+		}catch(Exception e){
+			System.err.println (e.getMessage ());}
+	}
+	
+
+	public static void IncreaseBalance(EmbeddedSQL esql)
 	{
 		try{
 			
-			Scanner user_input = new Scanner(System.in);
-			
-			System.out.print("Title of movie you would like to order: ");
-			
-			String query = "SELECT video_id, title FROM video WHERE title = ";
-
-			
-			boolean flag = true;
-			while(flag)
+			System.out.print("How much would you like to add to balance?: ");
+			String stringbal = in.readLine();
+			int intbal = Integer.parseInt(stringbal);
+																
+			if(intbal <= 0)
 			{
-				String title = in.readLine();
-							
-				if(title != null)
-					flag = false;
+				System.out.println("Must input number greater than $0");
+				return;
 			}
-
-
 			
-			esql.executeOrderQuery(query);
+			System.out.println("About to update");
 
-		}
-
-		catch(Exception e){
-		System.err.println (e.getMessage ());
-		}
+	
+			String query = "UPDATE users SET balance = balance +" + intbal + " WHERE user_id = '" 
+					+ currentUser + "'";
+											
+			esql.executeUpdate(query);
+	
+			System.out.println("UPDATED");
+			
+			String newbalance = "SELECT balance FROM users WHERE user_id='" + currentUser + "'";
+			System.out.print("New Balance after addition: ");
+			esql.executeStringQuery(newbalance, 1);		
+			
+			return;
+			
+		}catch(Exception e){	
+			System.err.println (e.getMessage ());}
 	}
-	
-	
 	
 	// NOT FULLY IMPLEMENTED NEED TO GRAB VIDEO ID AND THEN RATE MOVIE
 	public static void RateMovie(EmbeddedSQL esql)
@@ -418,11 +511,8 @@ public class EmbeddedSQL {
 			
 			String output = esql.executeStringQuery(query);
 
-		}
-		
-		catch(Exception e){
-         System.err.println (e.getMessage ());
-      }
+		}catch(Exception e){
+			System.err.println (e.getMessage ());}
 	}
    
 	public static void Greeting(){
@@ -438,7 +528,8 @@ public class EmbeddedSQL {
    {
 		try{
 			System.out.println("Verifying that you are a Super User");
-			String query = "SELECT COUNT(super_user_id) FROM super_user WHERE super_user_id='" + currentUser + "';";
+			String query = "SELECT COUNT(super_user_id) FROM super_user WHERE super_user_id='" 
+					+ currentUser + "';";
 		
 			int resultset = esql.executeLoginQuery(query);
 
