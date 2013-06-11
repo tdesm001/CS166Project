@@ -405,7 +405,7 @@ public class EmbeddedSQL {
 	{
 		try{
 			String query = "SELECT title FROM Video";
-			String output = esql.executeStringQuery(query, 1);
+			esql.executeStringQuery(query, 1);
 
 		}catch(Exception e){
          System.err.println (e.getMessage ());
@@ -445,7 +445,7 @@ public class EmbeddedSQL {
 	{
 		try{		
 			System.out.print("Title of movie you would like to order: ");
-			String title = in.readline();
+			String title = in.readLine();
 
 			//Grabbing title and will print it
 			String query = "SELECT * FROM video WHERE title = ";
@@ -509,7 +509,7 @@ public class EmbeddedSQL {
 			
 			String query = "SELECT title FROM Video";
 			
-			String output = esql.executeStringQuery(query);
+			//String output = esql.executeStringQuery(query);  //Cant use executeString This way!!!!
 
 		}catch(Exception e){
 			System.err.println (e.getMessage ());}
