@@ -13,6 +13,7 @@
  *
  */
 
+
 import java.sql.DriverManager;
 import java.sql.Connection;
 import java.sql.Statement;
@@ -24,6 +25,12 @@ import java.io.FileReader;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 
+
+///////////////////////////////////////////////////////
+////////////////////////////////////////////////////
+/////////	ADD THIS IMPORT			////////////////
+import java.util.Scanner;
+
 /**
  * This class defines a simple embedded SQL utility class that is designed to
  * work with PostgreSQL JDBC drivers.
@@ -32,7 +39,8 @@ import java.io.InputStreamReader;
 public class EmbeddedSQL {
 
    
-	public static String currentUser;	
+	public static String currentUser;
+	public static boolean superUser = false;
 	// reference to physical database connection.
    private Connection _connection = null;
 
@@ -85,6 +93,67 @@ public class EmbeddedSQL {
       // close the instruction
       stmt.close ();
    }//end executeUpdate
+   	
+	public String executeStringQuery (String query) throws SQLException
+	{
+		// creates a statement objectv
+		Statement stmt = this._connection.createStatement ();
+
+		// issues the query instruction
+		ResultSet rs = stmt.executeQuery (query);
+
+		/*
+		** obtains the metadata object for the returned result set.  The metadata
+		** contains row and column info.
+		*/
+		System.out.println("--------------");
+		while(rs.next())
+		{
+			System.out.println(rs.getString(1));
+		}
+
+		ResultSetMetaData rsmd = rs.getMetaData ();
+		int numCol = rsmd.getColumnCount ();
+		rs.next();
+		String resultset = rs.getString(numCol);
+		System.out.println(resultset);
+
+		stmt.close();
+		return resultset;
+	}
+	
+	public void executeOrderQuery (String query) throws SQLException
+	{
+		// creates a statement objectv
+		Statement stmt = this._connection.createStatement ();
+
+		// issues the query instruction
+		ResultSet rs = stmt.executeQuery(query);
+
+		/*
+		** obtains the metadata object for the returned result set.  The metadata
+		** contains row and column info.
+		*/
+		
+		System.out.println("--------------");
+		
+		while(rs.next())
+		{
+			System.out.println("You are about to order:");
+			System.out.println(rs.getString(1));
+		}
+/*
+		ResultSetMetaData rsmd = rs.getMetaData ();
+		int numCol = rsmd.getColumnCount ();
+		rs.next();
+		String resultset = rs.getString(numCol);
+		System.out.println(resultset);
+
+		stmt.close();
+		return resultset;
+*/
+	}
+
 
    public int executeLoginQuery (String query) throws SQLException{
    		// creates a statement objectv
@@ -217,16 +286,59 @@ public class EmbeddedSQL {
             System.out.println("0. Yes I am!");
             System.out.println("1. No, I need to register!");
             System.out.println("9. < EXIT (Stop the program)");
+            
 
             switch (readChoice()){
-               case 0: LogInQuery(esql); break;
-			/////////////////////////////////////////////////////////////
-               case 1: System.out.println(RegisterQuery(esql)); break;
-			/////////////////////////////////////////////////////////////
-               case 9: keepon = false; break;
+               case 0: if(LogInQuery(esql) == 0 ) keepon = false; break;
+               case 1: if(RegisterQuery(esql) == 0 ) keepon = false; break;
+               case 9: return;
                default : System.out.println("Unrecognized choice!"); break;
             }//end switch
-         }//end while
+         }//end while 
+         
+		//Will need to turn keepon to false after logging in 
+		
+		boolean homescreen = true;         
+		while(homescreen)
+		{
+			System.out.println("Welcome to MovieNet");
+            System.out.println("---------");
+            System.out.println("0. See list of movies WORKING");
+            System.out.println("1. Order a movie NOT WORKING");
+			System.out.println("2. Rate a movie NOT WORKING");
+            System.out.println("3. Look at wall NOT WORKING");
+
+			if( superUser ){
+				System.out.println("\nSuper User Options:");
+				System.out.println("5. Register a new movie");
+				System.out.println("6. Delete an existing movie");
+				System.out.println("7. Delete an existing user");
+			}
+
+			/////////////////////////////////////////////////////////////CHANGES//////////
+			if( !superUser ) System.out.println("8. Login as SuperUser");
+			/////////////////////////////////////////////////////////////CHANGES//////////
+			System.out.println("9. < EXIT (Stop the program)");
+
+			switch (readChoice()){
+				case 0: ListMovies(esql); break;
+				case 1: OrderMovie(esql); break;
+						
+				/////////////////////////////////////////////////////////////CHANGES//////////
+				case 5: if( superUser ) {RegisterMovie(esql);}; break;
+				case 6: break;
+				case 7: break;
+				case 8: if( !superUser ) {LoginAsSuper(esql);}; break;
+				/////////////////////////////////////////////////////////////CHANGES//////////
+				
+				case 9: return;
+				default : System.out.println("Unrecognized choice!"); break;
+			}
+
+		
+		}
+		     
+         
       }catch(Exception e) {
          System.err.println (e.getMessage ());
       }finally{
@@ -243,13 +355,149 @@ public class EmbeddedSQL {
       }//end try
    }//end main
    
-   public static void Greeting(){
+
+
+	public static void ListMovies(EmbeddedSQL esql)
+	{
+		try{
+
+			String query = "SELECT title FROM Video";
+			String output = esql.executeStringQuery(query);
+
+		}
+		
+		catch(Exception e){
+         System.err.println (e.getMessage ());
+      }
+	}
+	
+	public static void OrderMovie(EmbeddedSQL esql)
+	{
+		try{
+			
+			Scanner user_input = new Scanner(System.in);
+			
+			System.out.print("Title of movie you would like to order: ");
+			
+			String query = "SELECT video_id, title FROM video WHERE title = ";
+
+			
+			boolean flag = true;
+			while(flag)
+			{
+				String title = in.readLine();
+							
+				if(title != null)
+					flag = false;
+			}
+
+
+			
+			esql.executeOrderQuery(query);
+
+		}
+
+		catch(Exception e){
+		System.err.println (e.getMessage ());
+		}
+	}
+	
+	
+	
+	// NOT FULLY IMPLEMENTED NEED TO GRAB VIDEO ID AND THEN RATE MOVIE
+	public static void RateMovie(EmbeddedSQL esql)
+	{
+		try{
+			
+			System.out.print("Title of movie you would like to rate: ");
+			String title = in.readLine();
+			System.out.print("What would you like to rate the movie (0 - 10): ");
+			String rating = in.readLine();
+			
+			String query = "SELECT title FROM Video";
+			
+			String output = esql.executeStringQuery(query);
+
+		}
+		
+		catch(Exception e){
+         System.err.println (e.getMessage ());
+      }
+	}
+   
+	public static void Greeting(){
       System.out.println(
          "\n\n*******************************************************\n" +
          "              User Interface      	               \n" +
          "*******************************************************\n");
    }//end Greeting
 
+   ///////////////////////////////////////////////////////////////START//////////
+	/////////////////////////////////////////////////////////////CHANGES//////////
+   public static int LoginAsSuper(EmbeddedSQL esql)
+   {
+		try{
+			System.out.println("Verifying that you are a Super User");
+			String query = "SELECT COUNT(super_user_id) FROM super_user WHERE super_user_id='" + currentUser + "';";
+		
+			int resultset = esql.executeLoginQuery(query);
+
+			if( resultset != 1 ){
+				System.out.println("I'm sorry but you are not a registered super user");
+				return 1;
+			}
+
+			else if( resultset == 1 ){
+				System.out.println("Welcome super user " + currentUser);
+				superUser = true;
+				return 0;
+			}
+
+		}catch(Exception e){
+			System.err.println( e.getMessage() );
+			return 1;
+			}
+	return 0;
+   }//end LoginAsSuper
+
+
+   public static int RegisterMovie(EmbeddedSQL esql)
+   {
+		try{
+			boolean isSeries = false;
+			System.out.println("Please enter the following information to register a new movie/series");
+			System.out.println("Is this video part of a series (y/n)?");
+			String input = in.readLine();
+			if( input.equals("y") ) isSeries = true;
+
+			String query = "SELECT MAX(video_id) FROM video;";
+			Statement stmt = esql._connection.createStatement ();
+
+      		// issues the query instruction
+      		ResultSet rs = stmt.executeQuery (query);
+		/*
+       	** obtains the metadata object for the returned result set.  The metadata
+       	** contains row and column info.
+       	*/
+      		ResultSetMetaData rsmd = rs.getMetaData ();
+      		int numCol = rsmd.getColumnCount ();
+     		rs.next();
+	 		int resultset = Integer.parseInt(rs.getString(numCol)) + 1;
+	 		
+			query = "INSERT INTO video( video_id, title, year, online_price, dvd_price";
+
+
+		}catch(Exception e){
+			System.err.println( e.getMessage() );
+			return 1;
+			}
+		return 0;
+   }
+
+
+   /////////////////////////////////////////////////////////////CHANGES//////////
+  /////////////////////////////////////////////////////////////CHANGES//////////
+  //////////////////////////////////////////////////////////////END//////////////
    /*
     * Reads the users choice given from the keyboard
     * @int
@@ -270,7 +518,7 @@ public class EmbeddedSQL {
       return input;
    }//end readChoice
 
-   public static void LogInQuery(EmbeddedSQL esql){
+  public static int LogInQuery(EmbeddedSQL esql){
       try{
 		System.out.println("You are trying to Login as an existing user, enter your Username (Make sure it is only 9 chars long)");
 		while( true ){
@@ -302,13 +550,15 @@ public class EmbeddedSQL {
 			}
 		}
 
-
          //System.out.println ("total row(s): " + rowCount);
       }catch(Exception e){
          System.err.println (e.getMessage ());
+		 return 1;
       }
+	  return 0;
    }//end QueryExample
-  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+   
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
    public static int RegisterQuery(EmbeddedSQL esql){
 			System.out.println("You have selected to register yourself as a user.  Please specify the following information.");
@@ -375,6 +625,19 @@ public class EmbeddedSQL {
 	  }//end RegisterQuery
    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/*   
+   public static void RegisterQuery(EmbeddedSQL esql){
+     	try{
+         String query = "SELECT C.sid, COUNT(C.pid) FROM Suppliers S, Catalog C "
+				+ "WHERE C.sid=S.sid GROUP BY C.sid;";
+         
+		 int rowCount = esql.executeQuery (query);
+         System.out.println ("total row(s): " + rowCount);
+      }catch(Exception e){
+ 		System.err.println (e.getMessage ());
+	  }
+   }//end Query1
 
    public static void Query2(EmbeddedSQL esql){
       try{
@@ -456,5 +719,5 @@ public class EmbeddedSQL {
  		System.err.println (e.getMessage ());
 	  }
    }//end Query6
-
+*/
 }//end EmbeddedSQL
