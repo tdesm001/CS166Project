@@ -12,9 +12,6 @@
  * Target DBMS: 'Postgres'
  *
  */
- 
- //FUCK THIS TESTING
-//asdadadsadsad
 
 import java.sql.DriverManager;
 import java.sql.Connection;
@@ -89,7 +86,7 @@ public class EmbeddedSQL {
       stmt.close ();
    }//end executeUpdate
 
-   public String executeLoginQuery (String query) throws SQLException{
+   public int executeLoginQuery (String query) throws SQLException{
    		// creates a statement objectv
       Statement stmt = this._connection.createStatement ();
 
@@ -103,7 +100,7 @@ public class EmbeddedSQL {
       ResultSetMetaData rsmd = rs.getMetaData ();
       int numCol = rsmd.getColumnCount ();
       rs.next();
-	  String resultset = rs.getString(numCol);
+	  int resultset = Integer.parseInt(rs.getString(numCol));
 	  System.out.println(resultset);
 
 	  stmt.close();
@@ -223,7 +220,9 @@ public class EmbeddedSQL {
 
             switch (readChoice()){
                case 0: LogInQuery(esql); break;
-               case 1: RegisterQuery(esql); break;
+			/////////////////////////////////////////////////////////////
+               case 1: System.out.println(RegisterQuery(esql)); break;
+			/////////////////////////////////////////////////////////////
                case 9: keepon = false; break;
                default : System.out.println("Unrecognized choice!"); break;
             }//end switch
@@ -280,22 +279,23 @@ public class EmbeddedSQL {
 			String query = "SELECT COUNT(user_id) FROM users WHERE user_id='";
 			query += input + "'";
 
-         	String output = esql.executeLoginQuery (query);
-		 	if( output != "1" ) {
+         	int output = esql.executeLoginQuery (query);
+			System.out.println("This is output" + output);
+		 	if( output != 1 ) {
 				 	System.out.println("Sorry, that username isn't in our records.  Please try again.");
 					continue;
 			}
-			else if( output == "1" ){
+			else if( output == 1 ){
 					currentUser = input;
 					System.out.println("Please specify your password:");
 					input = in.readLine();
 					query = "SELECT COUNT(user_id) FROM users WHERE user_id='" + currentUser + "' AND password='" + input + "'";
-					String output2 = esql.executeLoginQuery(query);
-					if( output2 != "1" ){
+					int output2 = esql.executeLoginQuery(query);
+					if( output2 != 1 ){
 							System.out.println("Sorry, the username and password don't match up.  Please try again.");
 							continue;
 					}
-					else if( output2 == "1" ){
+					else if( output2 == 1 ){
 							System.out.println("Successfully logged in!");
 							break;
 					}
@@ -308,18 +308,73 @@ public class EmbeddedSQL {
          System.err.println (e.getMessage ());
       }
    }//end QueryExample
-   
-   public static void RegisterQuery(EmbeddedSQL esql){
-     	try{
-         String query = "SELECT C.sid, COUNT(C.pid) FROM Suppliers S, Catalog C "
-				+ "WHERE C.sid=S.sid GROUP BY C.sid;";
-         
-		 int rowCount = esql.executeQuery (query);
-         System.out.println ("total row(s): " + rowCount);
-      }catch(Exception e){
- 		System.err.println (e.getMessage ());
-	  }
-   }//end Query1
+  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+   public static int RegisterQuery(EmbeddedSQL esql){
+			System.out.println("You have selected to register yourself as a user.  Please specify the following information.");
+			try{
+				System.out.println("Enter a username you want (Username must be 9 chars or less long):");
+				String input = in.readLine();
+				
+				//if( input.length() > 9 ) { System.out.println("Invalid Username (more than 9 chars)"); continue; }
+
+        		String query = "INSERT INTO Users (user_id, password, first_name, middle_name, last_name, e_mail, street1, street2, state, country, zipcode, balance)" +
+						"VALUES ('" + input + "','";
+
+				System.out.println("Enter your password:");
+				input = in.readLine();
+				query += input + "','";
+
+				System.out.println("Enter your first name:");
+				input = in.readLine();
+				query += input + "','";
+
+				System.out.println("Enter your middle name:");
+				input = in.readLine();
+				query += input + "','";
+
+				System.out.println("Enter your last name:");
+				input = in.readLine();
+				query += input + "','";
+
+				System.out.println("Enter your email:");
+				input = in.readLine();
+				query += input + "','";
+
+				System.out.println("Enter your street1:");
+				input = in.readLine();
+				query += input + "','";
+
+				System.out.println("Enter your street2:");
+				input = in.readLine();
+				query += input + "','";
+	
+				System.out.println("Enter your state:");
+				input = in.readLine();
+				query += input + "','";
+
+				System.out.println("Enter your country:");
+				input = in.readLine();
+				query += input + "','";
+
+				System.out.println("Enter your zipcode:");
+				input = in.readLine();
+				query += input + "','";
+
+				System.out.println("Enter your balance:");
+				input = in.readLine();
+				query += input + "')";
+				
+				esql.executeUpdate (query);
+		
+			}catch(Exception e){
+					System.err.println (e.getMessage ());
+					return 1;
+			}//end catch
+		return 0;
+	  }//end RegisterQuery
+   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
    public static void Query2(EmbeddedSQL esql){
       try{
