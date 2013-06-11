@@ -457,10 +457,10 @@ public class EmbeddedSQL {
 			System.err.println( e.getMessage() );
 			return 1;
 			}
-	return 0;
+		return 0;
    }//end LoginAsSuper
 
-
+	//Register a new video, creating new video_id, season_id, and series_id if necessary
    public static int RegisterMovie(EmbeddedSQL esql)
    {
 		try{
@@ -468,19 +468,21 @@ public class EmbeddedSQL {
 			System.out.println("Please enter the following information to register a new movie/series");
 			
 			System.out.println("What is the title of this video?");
-			inputTitle = in.readLine();
+			String inputTitle = in.readLine();
 			
 			System.out.println("Is this video part of a series (y/n)?");
 			String inputSeries = in.readLine();
-			String inputTitle = "";
+			
+			String inputSeasonNum = "";
+			String inputEpNum = "";
 			String inputYear = "";
 			int inputOnlinePrice;
 			int inputDvdPrice;
 			int inputRating;
-			String inputSeasonNum = "";
-			String inputEpNum = "";
 			int series_id;
 			int season_id;
+			
+			//if this is a season get season info
 			if( inputSeries.equals("y") ){
 				isSeries = true;
 				
@@ -522,8 +524,9 @@ public class EmbeddedSQL {
       			rsmd = rs.getMetaData ();
       			numCol = rsmd.getColumnCount ();
      			
-				//get the series id
+				//get the series id if it already exists
 				if(rs.next()) series_id = Integer.parseInt(rs.getString(numCol));
+				//if series id doesnt already exist then create a new series value
 				else{
 					getSeriesId = "SELECT MAX(series_id) FROM series;";
 					rs = stmt.executeQuery(getSeriesId);
@@ -543,6 +546,7 @@ public class EmbeddedSQL {
 
 				//if the season id already exists grab the season id
 				if(rs.next()) season_id = Integer.parseInt(rs.getString(1));
+				//if the season id doesn't exist then place insert new season value
 				else{
 					getSeasonId = "SELECT MAX(season_id) FROM season;";
 					rs = stmt.executeQuery(getSeasonId);
@@ -554,20 +558,23 @@ public class EmbeddedSQL {
 					esql.executeUpdate(insertSeason);
 				}
 
-
-				//System.out.println("season_id " + season_id + " series_id " + series_id);
-
 				String insertVideo = "INSERT INTO video (video_id, title, year, online_price, dvd_price, rating, episode, season_id) VALUES " + 
 						"(" + video_id + ",'" + inputTitle + "', '" + inputYear + "', " + inputOnlinePrice + ", " + inputDvdPrice + ", " + inputRating + ", " + inputEpNum + ", " + season_id + ");";
 
 				esql.executeUpdate(insertVideo);
-				//if season doesnt exist already
-				//if( season_id == null );
 
 				System.out.println("SEASON_ID " + series_id);
+				stmt.close();
+			}//End if video is a series
 
-				//query = "INSERT INTO video( video_id, title, year, online_price, dvd_price, ";
-			}
+			else if( !isSeries )
+			{
+				String insertVideo = "INSERT INTO video (video_id, title, year, online_price, dvd_price, rating) VALUES " + 
+						"(" + video_id + ",'" + inputTitle + "', '" + inputYear + "', " + inputOnlinePrice + ", " + inputDvdPrice + ", " + inputRating + ");";
+				stmt = esql._connection.createStatement ();
+				esql.executeUpdate(insertVideo);
+				stmt.close();
+			}//End if video is not series
 
 		}catch(Exception e){
 			System.err.println( e.getMessage() );
@@ -602,44 +609,55 @@ public class EmbeddedSQL {
 
   public static int LogInQuery(EmbeddedSQL esql){
       try{
-		System.out.println("You are trying to Login as an existing user, enter your Username (Make sure it is only 9 chars long)");
+		System.out.println("You are trying to Login as an existing user, enter your Username (Make sure it is only 9 chars long) or press 9 to go back");
+		//Keep asking the user to login if they want to log in
 		while( true ){
-			System.out.println("Please specify your username:");
-			String input = in.readLine();
+			System.out.println("Please specify your username or press 9 to go back:");
+			String inputUser = in.readLine();
+
+			if( inputUser.equals("9") ) return 1;  //exit the loop and go back to home screen
+			
 			String query = "SELECT COUNT(user_id) FROM users WHERE user_id='";
-			query += input + "'";
+			query += inputUser + "'";
 
          	int output = esql.executeLoginQuery (query);
 			System.out.println("This is output" + output);
-		 	if( output != 1 ) {
-				 	System.out.println("Sorry, that username isn't in our records.  Please try again.");
-					continue;
-			}
+		 	
+			//check if username is valid, if not 1 then either output = 0 or > 2 which is a problem
+			if( output != 1 ) {
+				System.out.println("Sorry, that username isn't in our records.  Please try again.");
+				continue;
+			}//end username not found
+			
+			//if output is 1 then only 1 record with that user found (good)
 			else if( output == 1 ){
-					currentUser = input;
-					System.out.println("Please specify your password:");
-					input = in.readLine();
-					query = "SELECT COUNT(user_id) FROM users WHERE user_id='" + currentUser + "' AND password='" + input + "'";
-					int output2 = esql.executeLoginQuery(query);
-					if( output2 != 1 ){
-							System.out.println("Sorry, the username and password don't match up.  Please try again.");
-							continue;
-					}
-					else if( output2 == 1 ){
-							System.out.println("Successfully logged in!");
-							break;
-					}
-			}
-		}
+				System.out.println("Please specify your password:");
+				String inputPass = in.readLine();
+				query = "SELECT COUNT(user_id) FROM users WHERE user_id='" + inputUser + "' AND password='" + inputPass + "'";
+				
+				int output2 = esql.executeLoginQuery(query); //returns number of query occurances
 
-         //System.out.println ("total row(s): " + rowCount);
+				//if password doesn't match records ask for username again
+				if( output2 != 1 ){
+					System.out.println("Sorry, the username and password don't match up.  Please try again.");
+					continue;
+				}//end password fail
+
+				//if password correct then save current user info and log them in
+				else if( output2 == 1 ){
+					currentUser = inputUser;
+					System.out.println("Successfully logged in! Welcome " + currentUser + "!");
+					break;
+				}//end password success
+			}//end username found
+		}//end user login prompt
       }catch(Exception e){
          System.err.println (e.getMessage ());
 		 return 1;
-      }
+      }//end catch
 	  return 0;
-   }//end QueryExample
-   
+   }//end LoginQuery
+
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
    public static int RegisterQuery(EmbeddedSQL esql){
