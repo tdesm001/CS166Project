@@ -547,8 +547,10 @@ public class EmbeddedSQL {
 		return 0;
    }//end LoginAsSuper
 
-   public static void queryGenre(EmbeddedSQL esql)
+   ///SOME NEW FUNCTIONS HERE/////////////////////////////////////////////////////////////////////////////////
+   public static int queryGenre(EmbeddedSQL esql)
    {
+		int genre_id = -1;
 		try{
 			//Added some Genre code here//////////////////////////////////////////////
 			System.out.println("What is the genre of this video?");
@@ -559,14 +561,15 @@ public class EmbeddedSQL {
 			ResultSet rs = stmt.executeQuery(getGenre);
 			ResultSetMetaData rsmd = rs.getMetaData();
 
+			if( rs.next() ) genre_id = Integer.parseInt(rs.getString(1));
+			
 			//only care if the genre doesn't already exist
-			if( !rs.next() ) 
+			else 
 			{
 				getGenre = "SELECT MAX(genre_id) FROM genre;";
 				rs = stmt.executeQuery(getGenre);
 				rsmd = rs.getMetaData();
 				
-				int genre_id;
 				if( rs.next() ) genre_id = Integer.parseInt(rs.getString(1))+1;
 				else genre_id = 1;
 				
@@ -577,8 +580,30 @@ public class EmbeddedSQL {
 			////////////////////////////////////////////////////////////////////////
 
 			}catch(Exception e){
+				System.err.println( e.getMessage() );
+				return -1;}
+		return genre_id;
+   }
+
+   public static void categorizeVideo(EmbeddedSQL esql, int video_id, int genre_id )
+   {
+		System.out.println("VIDEOID: " + video_id + " GenreID: " + genre_id);
+		try{
+			String getGenre = "SELECT COUNT(*) FROM categorize WHERE genre_id=" + genre_id + " AND video_id=" + video_id + ";";
+			Statement stmt = esql._connection.createStatement();
+			ResultSet rs = stmt.executeQuery(getGenre);
+			ResultSetMetaData rsmd = rs.getMetaData();
+
+
+			//only care if this video_id isn't already in the list
+			if( !rs.next() || rs.getString(1).equals("0") )
+				esql.executeUpdate( "INSERT INTO categorize (video_id, genre_id) VALUES (" + video_id + ", " + genre_id + ");" );
+		
+			}catch(Exception e){
 				System.err.println( e.getMessage() );}
    }
+
+   //////END OF SEGMENTED NEW FUNCTIONS///////////////////////////////////////////////////////////////////////
 
 	//Register a new video, creating new video_id, season_id, and series_id if necessary
    public static int RegisterMovie(EmbeddedSQL esql)
@@ -590,8 +615,12 @@ public class EmbeddedSQL {
 			System.out.println("What is the title of this video?");
 			String inputTitle = in.readLine();
 
-			queryGenre(esql);
-			
+			///ADDEDD//////////////////////////////////////////////////////////
+			int genre_id = queryGenre(esql);
+			if( genre_id == -1 ) System.out.println("Problem when creating genre");
+			////ADDEDD//////////////////////////////////////////////////////////
+
+
 			System.out.println("Is this video part of a series (y/n)?");
 			String inputSeries = in.readLine();
 
@@ -685,7 +714,6 @@ public class EmbeddedSQL {
 
 				esql.executeUpdate(insertVideo);
 
-				System.out.println("SEASON_ID " + series_id);
 				stmt.close();
 			}//End if video is a series
 
@@ -698,6 +726,9 @@ public class EmbeddedSQL {
 				stmt.close();
 			}//End if video is not series
 
+			///ADDDEDDD//////////////////////////////////
+			categorizeVideo(esql, video_id, genre_id);
+			///ADDEDDDD/////////////////////////////////
 		}catch(Exception e){
 			System.err.println( e.getMessage() );
 			return 1;
