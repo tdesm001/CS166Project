@@ -351,8 +351,7 @@ public class EmbeddedSQL {
 			if( superUser ){
 				System.out.println("\nSuper User Options:");
 				System.out.println("10. Register a new movie WORKING");
-				System.out.println("11. Delete an existing movie NOT WORKING");
-				System.out.println("12. Delete an existing user NOT WORKING");
+				System.out.println("11. Delete an existing user NOT WORKING");
 			}
 
 			/////////////////////////////////////////////////////////////CHANGES//////////
@@ -374,8 +373,7 @@ public class EmbeddedSQL {
 				
 				case 9: return;
 				case 10: if( superUser ) {RegisterMovie(esql);}; break;
-				case 11: break;
-				case 12: break;
+				case 11: if( superUser ) {deleteUser(esql);}; break;
 				default : System.out.println("Unrecognized choice!"); break;
 			}
 
@@ -673,6 +671,52 @@ public class EmbeddedSQL {
 			}
 		return 0;
    }
+
+   	//this will delete a user from the database (only if user is superUser)
+	public static int deleteUser(EmbeddedSQL esql)
+	{
+		try{
+			System.out.println("In order to delete a specific movie instance you must specify the following information");
+			while( true )
+			{
+				System.out.println("Please specify a user_id that you want to delete or press 9 to cancel");
+				String inputDelUser = in.readLine();
+				
+				if( inputDelUser.equals("9") ) break;
+				else if( inputDelUser.equals(currentUser) )
+				{
+					System.out.println("You cannot delete youself, sorry.");
+					continue;
+				}
+
+				String query = "Select COUNT(user_id) FROM users WHERE user_id='" + inputDelUser + "';";
+				
+				Statement stmt = esql._connection.createStatement ();
+				ResultSet rs = stmt.executeQuery(query);
+				ResultSetMetaData rsmd = rs.getMetaData();
+
+				//if the user does exist
+				if(rs.next() && Integer.parseInt(rs.getString(1)) == 1 )
+				{
+					query = "DELETE FROM users WHERE user_id='" + inputDelUser + "';";
+					esql.executeUpdate(query);
+					System.out.println("Successfully deleted user: " + inputDelUser );
+					return 0;
+				}//end user exist
+				
+				//if user doesnt exist
+				else
+				{
+					System.out.println("Sorry that user doesn't exist.  Please make sure you have the right user_id");
+					continue;
+				}//end user doest exist
+			}//end while
+	
+		}catch(Exception e){
+			System.err.println( e.getMessage() );
+			return 1;}
+		return 0;
+	}
 
 
    /////////////////////////////////////////////////////////////CHANGES//////////
