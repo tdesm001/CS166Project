@@ -520,8 +520,6 @@ public class EmbeddedSQL {
          "*******************************************************\n");
    }//end Greeting
 
-   ///////////////////////////////////////////////////////////////START//////////
-	/////////////////////////////////////////////////////////////CHANGES//////////
    public static int LoginAsSuper(EmbeddedSQL esql)
    {
 		try{
@@ -549,6 +547,39 @@ public class EmbeddedSQL {
 		return 0;
    }//end LoginAsSuper
 
+   public static void queryGenre(EmbeddedSQL esql)
+   {
+		try{
+			//Added some Genre code here//////////////////////////////////////////////
+			System.out.println("What is the genre of this video?");
+			String inputGenre = in.readLine();
+			
+			String getGenre = "SELECT genre_id FROM genre WHERE genre_name='" + inputGenre + "';";
+			Statement stmt = esql._connection.createStatement();
+			ResultSet rs = stmt.executeQuery(getGenre);
+			ResultSetMetaData rsmd = rs.getMetaData();
+
+			//only care if the genre doesn't already exist
+			if( !rs.next() ) 
+			{
+				getGenre = "SELECT MAX(genre_id) FROM genre;";
+				rs = stmt.executeQuery(getGenre);
+				rsmd = rs.getMetaData();
+				
+				int genre_id;
+				if( rs.next() ) genre_id = Integer.parseInt(rs.getString(1))+1;
+				else genre_id = 1;
+				
+				esql.executeUpdate( "INSERT INTO genre (genre_id, genre_name) VALUES (" + genre_id + ", '" + inputGenre + "');" );
+				rs.close();
+			}
+
+			////////////////////////////////////////////////////////////////////////
+
+			}catch(Exception e){
+				System.err.println( e.getMessage() );}
+   }
+
 	//Register a new video, creating new video_id, season_id, and series_id if necessary
    public static int RegisterMovie(EmbeddedSQL esql)
    {
@@ -558,10 +589,12 @@ public class EmbeddedSQL {
 			
 			System.out.println("What is the title of this video?");
 			String inputTitle = in.readLine();
+
+			queryGenre(esql);
 			
 			System.out.println("Is this video part of a series (y/n)?");
 			String inputSeries = in.readLine();
-			
+
 			String inputSeasonNum = "";
 			String inputEpNum = "";
 			String inputYear = "";
@@ -672,6 +705,8 @@ public class EmbeddedSQL {
 		return 0;
    }
 
+   ///////////////////////////////////////////////////////////////START//////////
+	/////////////////////////////////////////////////////////////CHANGES//////////
    	//this will delete a user from the database (only if user is superUser)
 	public static int deleteUser(EmbeddedSQL esql)
 	{
@@ -701,6 +736,7 @@ public class EmbeddedSQL {
 					query = "DELETE FROM users WHERE user_id='" + inputDelUser + "';";
 					esql.executeUpdate(query);
 					System.out.println("Successfully deleted user: " + inputDelUser );
+					rs.close();
 					return 0;
 				}//end user exist
 				
@@ -708,6 +744,7 @@ public class EmbeddedSQL {
 				else
 				{
 					System.out.println("Sorry that user doesn't exist.  Please make sure you have the right user_id");
+					rs.close();
 					continue;
 				}//end user doest exist
 			}//end while
